@@ -1,5 +1,10 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+
+/** Tab 으로 갈 수 있는 요소. 팝업 안에서 포커스를 돌릴 때 쓴다. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 type ModalProps = {
   open: boolean
@@ -37,6 +42,8 @@ export function Modal({
   contentWidth = 'max-w-[425px]',
   children,
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (!open) return
 
@@ -61,6 +68,53 @@ export function Modal({
     }
   }, [open, onClose])
 
+  /*
+   * 포커스를 팝업 안으로 옮기고, 닫히면 원래 자리로 돌려준다.
+   *
+   * 옮기지 않으면 포커스가 뒤 화면에 남는다. 로그인 실패 팝업이 그랬다 — 비밀번호 칸에서
+   * 엔터로 제출하면 팝업이 뜬 뒤에도 포커스가 그 칸에 있어서, 엔터 한 번에 로그인이 다시
+   * 나가고 실패 횟수가 올라갔다.
+   *
+   * onClose 는 부르는 쪽이 매번 새로 만드는 경우가 많아 의존성에 넣지 않는다. 넣으면
+   * 다시 그릴 때마다 「원래 자리」를 팝업 자신으로 덮어쓴다.
+   */
+  useEffect(() => {
+    if (!open) return
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // 안쪽에서 autoFocus 로 이미 잡았으면 그대로 둔다. 아니면 카드 자체에 둔다 — 선택을 묻는
+    // 팝업에서 첫 버튼에 두면 엔터 한 번이 그 선택이 되어 버린다.
+    if (!dialog.contains(document.activeElement)) dialog.focus()
+
+    // Tab 으로 뒤 화면까지 나가지 않게 팝업 안에서 돈다.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return
+      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (focusables.length === 0) {
+        event.preventDefault()
+        return
+      }
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      const active = document.activeElement
+      if (event.shiftKey && (active === first || active === dialog)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previous?.isConnected) previous.focus()
+    }
+  }, [open])
+
   if (!open) return null
 
   return createPortal(
@@ -75,10 +129,12 @@ export function Modal({
       }
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="flex w-full max-w-[577px] flex-col items-center rounded-3xl bg-white px-6 py-14 shadow-[0_16px_72px_0_rgba(23,23,23,0.16)]"
+        tabIndex={-1}
+        className="outline-none flex w-full max-w-[577px] flex-col items-center rounded-3xl bg-white px-6 py-14 shadow-[0_16px_72px_0_rgba(23,23,23,0.16)]"
       >
         <div className={'flex w-full flex-col items-center gap-12 ' + contentWidth}>
           {children}

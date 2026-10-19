@@ -43,7 +43,13 @@ export function LoginFailedDialog({
         <p>이메일을 통해 비밀번호를 재설정 해야합니다.</p>
       </ModalHeading>
 
-      <button type="button" onClick={onClose} className={`${ctaPrimaryClass} w-full`}>
+      {/* 안내만 하는 팝업이라 엔터가 곧 「확인」이 되게 한다. */}
+      <button
+        type="button"
+        autoFocus
+        onClick={onClose}
+        className={`${ctaPrimaryClass} w-full`}
+      >
         확인
       </button>
     </Modal>

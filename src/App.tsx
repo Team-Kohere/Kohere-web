@@ -39,8 +39,10 @@ export default function App() {
         <Route path="/" element={<Navigate to="/listings" replace />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/listings" element={<ListingsPage />} />
-        <Route path="/listings/new" element={<ListingNewPage />} />
-        <Route path="/listings/:listingId/edit" element={<ListingNewPage />} />
+        {/* key 를 나눠야 수정 → 신규로 옮길 때 새로 마운트된다. 같으면 컴포넌트가 재사용되어
+            수정 중이던 값·사진이 신규 폼과 임시저장으로 넘어간다. */}
+        <Route path="/listings/new" element={<ListingNewPage key="new" />} />
+        <Route path="/listings/:listingId/edit" element={<ListingNewPage key="edit" />} />
         <Route path="/listings/:listingId" element={<ListingDetailPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/edit" element={<ProfileEditPage />} />
